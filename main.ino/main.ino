@@ -1,16 +1,15 @@
 #include <usbh_midi.h>
 #include <usbhub.h>
 #include <SPI.h>
-
 USB Usb;
 USBHub Hub(&Usb);
 USBH_MIDI  Midi(&Usb);
 
-#ifdef USBCON
-#define _MIDI_SERIAL_PORT Serial1
-#else
-#define _MIDI_SERIAL_PORT Serial
-#endif
+// #ifdef USBCON
+// #define _MIDI_SERIAL_PORT Serial1
+// #else
+// #define _MIDI_SERIAL_PORT Serial
+// #endif
 //////////////////////////
 // MIDI Pin assign
 // 2 : GND
@@ -18,13 +17,40 @@ USBH_MIDI  Midi(&Usb);
 // 5 : TX
 //////////////////////////
 
-
 void MIDI_poll();
+
+struct Option {
+  const char* name;
+  char color;
+  int (*handler)(); // pointer to function
+
+  void callHandler() {
+    int rc;
+    rc = handler();
+    Serial.println(rc, DEC);
+  }
+};
+
+int one() {
+  return 1;
+}
+
+int two() {
+  return 2;
+}
+
+int three() {
+  return 3;
+}
+
+int four() {
+  return 4;
+}
 
 struct Pad {
   char index;
   char option_index;
-  char* options_array;
+  Option* options_array;
   char options_array_len;
 
   void SelectNextOption() {
@@ -37,35 +63,27 @@ struct Pad {
     else {
       option_index++;
     }
-    // Serial.print("Selected option ");
-    // Serial.println(option_index, DEC);
+    options_array[option_index].callHandler();
   }
 };
 
 struct Scene {
   char display_only_flg;
 
-  char pad_options_1[2] = {15 // off, red
-   ,24 // on, green
-  };
-  char  pad_options_2[4] = {
-    15 // bass, red
-    ,19 // piano, orange
-    ,21 // yellow, organ
-    ,24 // strings, green
-  };
+  Option power_options[2] = {{"off", 15, two}, {"on", 24, one}};
+  Option eg_options[4] = {{"bass", 15, one}, {"piano", 19, two}, {"yellow", 21, three}, {"strings", 24, four}};
 
 //  char pad_indexes[16] = {96, 97, 98, 99, 100, 101, 102, 103, 112, 113, 114, 115, 116, 117, 118, 119};
 
   Pad pads[16] = {
-    {96, 0, pad_options_1, 2},
-    {97, 0, pad_options_2, 4},
-    {98, 0, pad_options_1, 2},
-    {99, 0, pad_options_2, 4},
-    {100, 0, pad_options_1, 2},
-    {101, 0, pad_options_2, 4},
-    {102, 0, pad_options_1, 2},
-    {103, 0, pad_options_2, 4},
+    {96, 0, power_options, 2},
+    {97, 0, eg_options, 4},
+    {98, 0, power_options, 2},
+    {99, 0, eg_options, 4},
+    {100, 0, power_options, 2},
+    {101, 0, eg_options, 4},
+    {102, 0, power_options, 2},
+    {103, 0, eg_options, 4},
     {112, 0, 0, 0},
     {113, 0, 0, 0},
     {114, 0, 0, 0},
@@ -81,20 +99,14 @@ struct Scene {
 
    for (int i=0; i <= 16; i++){
       if (pads[i].options_array != 0) {
-        /* Serial.println(pads[i].index, DEC);
-        Serial.println(pads[i].options[pads[i].selected_option], DEC); */
         msg[1] = pads[i].index;
-        msg[2] = pads[i].options_array[pads[i].option_index];
+        msg[2] = pads[i].options_array[pads[i].option_index].color;
         Midi.SendData(msg, 1);
         delay(1);
-//        msg[2] = 0;
-//        Midi.SendData(msg, 1);
-//        delay(1);
       }
    }
   }
 };
-
 
 struct Controller {
   char extended_mode_flg;
@@ -105,7 +117,7 @@ struct Controller {
 
     // Serial.println("Enable extended mode");
 
-   // TODO: Status check
+    // TODO: Status check
     /* uint8_t msg[3] = {144, 11, 0};
     Midi.SendData(msg, 1);
     delay(1);
@@ -127,8 +139,8 @@ Scene scene1;
 
 void setup()
 {
-  // Serial.begin(9600);
-  _MIDI_SERIAL_PORT.begin(31250);
+  Serial.begin(9600);
+  // _MIDI_SERIAL_PORT.begin(31250);
 
   // Serial.println("check1");
   if (Usb.Init() == -1) {
@@ -147,7 +159,7 @@ void loop() {
       controller.EnableExtendedMode();
     }
 
-    scene1.Render();
+    // scene1.Render();
   }
 
   Usb.Task();
@@ -184,7 +196,7 @@ void MIDI_poll()
         pad_index = outBuf[1] - 112;
       }
       else {
-        _MIDI_SERIAL_PORT.write(outBuf, size);
+        // _MIDI_SERIAL_PORT.write(outBuf, size);
       }
     }
 
