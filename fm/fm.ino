@@ -1,6 +1,6 @@
 #include <usbh_midi.h>
-#include <usbhub.h>
-#include <SPI.h>
+// #include <usbhub.h>
+// #include <SPI.h>
 
 USB Usb;
 USBH_MIDI  Midi(&Usb);
@@ -10,7 +10,14 @@ USBH_MIDI  Midi(&Usb);
 // #else
 // #define _MIDI_SERIAL_PORT Serial
 // #endif
+
 #define _MIDI_SERIAL_PORT Serial1
+//////////////////////////
+// MIDI Pin assign
+// 2 : GND
+// 4 : +5V(Vcc) with 220ohm
+// 5 : TX
+//////////////////////////
 
 #define PAD1 96
 #define PAD2 97
@@ -93,25 +100,25 @@ struct Param {
   char current_value;
   char previous_value;
 
-  Param (const char* display_code, char max_value) {
-    display_code = display_code;
-    max_value = max_value;
+  Param (const char* a, char b) {
+    display_code = a;
+    max_value = b;
     current_value = 0;
     previous_value = 0;
   }
 
-  Param (const char* display_code, char max_value, char current_value) {
-    display_code = display_code;
-    max_value = max_value;
-    current_value = current_value;
-    previous_value = current_value;
+  Param (const char* a, char b, char c) {
+    display_code = a;
+    max_value = b;
+    current_value = c;
+    previous_value = c;
   }
 
-  Param (const char* display_code, char max_value, char current_value, char previous_value) {
-    display_code = display_code;
-    max_value = max_value;
-    current_value = current_value;
-    previous_value = previous_value;
+  Param (const char* a, char b, char c, char d) {
+    display_code = a;
+    max_value = b;
+    current_value = c;
+    previous_value = d;
   }
 
   void parameter_set_value(char value) {
@@ -220,8 +227,10 @@ struct Operator {
   }
 
   void get_parameter_values() {
+    Serial.println("Operator: ");
 
     for (char i = 0; i < 21; i++) {
+      _MIDI_SERIAL_PORT.write(parameters[i].current_value);
       Serial.print(parameters[i].current_value, DEC);
       Serial.print(" ");
     }
@@ -236,12 +245,14 @@ struct All {
     {"ptl1", 99, 50, 0}, {"ptl2", 99, 50, 0}, {"ptl3", 99, 50, 0}, {"ptl4", 99, 50, 0},
     {"algo", 31, 0, 0}, {"feed", 7, 0, 0}, {"oks ", 1, 0, 0}, {"lfor", 99, 0, 0},
     {"lfod", 99, 0, 0}, {"lpmd", 99, 0, 0}, {"lamd", 99, 0, 0}, {"lks ", 1, 0, 0},
-    {"lfow", 5, 0, 0}, {"msp ", 7, 0, 0}, {"trsp", 31, 12, 0}
+    {"lfow", 5, 0, 0}, {"msp ", 7, 0, 0}, {"trsp", 48, 32, 0}
   };
 
   void get_parameter_values() {
+    Serial.println("All: ");
 
     for (char i = 0; i < 19; i++) {
+      _MIDI_SERIAL_PORT.write(parameters[i].current_value);
       Serial.print(parameters[i].current_value, DEC);
       Serial.print(" ");
     }
@@ -255,34 +266,34 @@ struct Patch {
   All all;
 
   void send_patch() {
-    Serial.println("Writing patch: ");
+    // Serial.println("Witing patch: ");
 
-    Serial.println("Start: ");
+    // Serial.println("Start: ");
     uint8_t patch_start[6] = {0xf0, 0x43, 0x00, 0x00, 0x01, 0x1b};
     for (char i = 0; i < 6; i++) {
       _MIDI_SERIAL_PORT.write(patch_start[i]);
-      Serial.print(patch_start[i], HEX);
-      Serial.print(" ");
+      // Serial.print(patch_start[i], HEX);
+      // Serial.print(" ");
     }
-    Serial.println();
+    // Serial.println();
 
-    Serial.println("Body: ");
-    for (char i = 6; i > 0; i--) {
-      Serial.print(i - 1, DEC);
-      operators[i - 1].get_parameter_values();
+    // Serial.println("Body: ");
+    for (char i = 0; i < 6; i++) {
+      // Serial.print(i - 1, DEC);
+      operators[i].get_parameter_values();
     }
 
     all.get_parameter_values();
 
-    Serial.println("End: ");
-    // uint8_t patch_end[12] = {0x63, 0x68, 0x65, 0x63, 0x6b, 0x31, 0x31, 0x33, 0x34, 0x34, 7, 0xf7};
-    uint8_t patch_end[12] = {0x73, 0x79, 0x6e, 0x74, 0x68, 0x6d, 0x61, 0x74, 0x61, 0x3f, 7, 0xf7};
+    // Serial.println("End: ");
+    uint8_t patch_end[12] = {'t', 'e', 's', 't', 'i', 'n', 'g', '1', '2', '3', 7, 0xf7};
+    // uint8_t patch_end[12] = {0x73, 0x79, 0x6e, 0x74, 0x68, 0x6d, 0x61, 0x74, 0x61, 0x3f, 7, 0xf7};
     for (char i = 0; i < 12; i++) {
-      _MIDI_SERIAL_PORT.write(patch_start[i]);
-      Serial.print(patch_start[i], HEX);
-      Serial.print(" ");
+      _MIDI_SERIAL_PORT.write(patch_end[i]);
+      // Serial.print(patch_end[i], HEX);
+      // Serial.print(" ");
     }
-    Serial.println();
+    // Serial.println();
   }
 
 };
@@ -302,10 +313,10 @@ struct Pad {
   char options_len;
 
   void pad_select_next_option() {
-    Serial.print("Pad #");
-    Serial.print(index, DEC);
-    Serial.print("Operator #");
-    Serial.println(operator_index);
+    // Serial.print("Pad #");
+    // Serial.print(index, DEC);
+    // Serial.print("Operator #");
+    // Serial.println(operator_index);
     if (options_len == 0) {
       return;
     }
@@ -349,28 +360,6 @@ struct Controller {
     {PAD15, OP4, 0, amplitude_modulation_option, 2},
     {PAD16, OP4, 0, envelope_generator_option, 4}
   };
-  // Pad pads[16] = {
-  //   {PAD1, OP1, 0, {operator_power_on, operator_power_off}, 2},
-    // {PAD2, OP1, 0, {oscillator_fixed_mode, oscillator_ratio_mode}, 2},
-    // {PAD9, OP1, 0, {amplitude_modulation_on, amplitude_modulation_off}, 2},
-    // {PAD10, OP1, 0, {enable_bass_envelope, enable_piano_envelope,
-    //   enable_organ_envelope, enable_strings_envelope}, 4},
-    // {PAD3, OP2, 0, {operator_power_on, operator_power_off}, 2},
-    // {PAD4, OP2, 0, {oscillator_fixed_mode, oscillator_ratio_mode}, 2},
-    // {PAD11, OP2, 0, {amplitude_modulation_on, amplitude_modulation_off}, 2},
-    // {PAD12, OP2, 0, {enable_bass_envelope, enable_piano_envelope,
-    //   enable_organ_envelope, enable_strings_envelope}, 4},
-    // {PAD5, OP3, 0, {operator_power_on, operator_power_off}, 2},
-    // {PAD6, OP3, 0, {oscillator_fixed_mode, oscillator_ratio_mode}, 2},
-    // {PAD13, OP3, 0, {amplitude_modulation_on, amplitude_modulation_off}, 2},
-    // {PAD14, OP3, 0, {enable_bass_envelope, enable_piano_envelope,
-    //   enable_organ_envelope, enable_strings_envelope}, 4},
-    // {PAD7, OP4, 0, {operator_power_on, operator_power_off}, 2},
-    // {PAD8, OP4, 0, {oscillator_fixed_mode, oscillator_ratio_mode}, 2},
-    // {PAD15, OP4, 0, {amplitude_modulation_on, amplitude_modulation_off}, 2},
-    // {PAD16, OP4, 0, {enable_bass_envelope, enable_piano_envelope,
-    //   enable_organ_envelope, enable_strings_envelope}, 4}
-  // };
 
   void controller_enable_extended_mode() {
     uint8_t msg[3] = {144, 12, 0};
@@ -431,12 +420,15 @@ void loop() {
     if ( Usb.getUsbTaskState() == USB_STATE_RUNNING ) {
       lk.controller_enable_extended_mode();
       lk.controller_render_pads();
+
+      patch.send_patch();
     }
   }
-  // put your main code here, to run repeatedly:
+
   Usb.Task();
   MIDI_poll();
 
+  // put your main code here, to run repeatedly:
   delay(10);
 }
 
@@ -450,47 +442,53 @@ void MIDI_poll()
 
   do {
     if ( (size = Midi.RecvData(outBuf)) > 0 ) {
-      // Serial.print(outBuf[0]);
-      // Serial.print(" ");
-      // Serial.print(outBuf[1]);
-      // Serial.print(" ");
-      // Serial.println(outBuf[2]);
+      Serial.print(outBuf[0]);
+      Serial.print(" ");
+      Serial.print(outBuf[1]);
+      Serial.print(" ");
+      Serial.println(outBuf[2]);
 
       // channel 1 note_on
       if (outBuf[0] == 144) {
-        // Identify pad
-        if (outBuf[1] >= PAD1 and outBuf[1] <= PAD8) {
-            pad_index = outBuf[1] - PAD1;
-        }
-        else if (outBuf[1] >= PAD9 and outBuf[1] <= PAD16){
-            pad_index = 8 + outBuf[1] - PAD9;
+
+        if (outBuf[1] >= PAD1 and outBuf[1] <= PAD8 or outBuf[1] >= PAD9 and outBuf[1] <= PAD16
+          or outBuf[1] == TOP_PLAY or outBuf[1] == BOTTOM_PLAY) {
+
+          // Identify pad
+          if (outBuf[1] >= PAD1 and outBuf[1] <= PAD8) {
+              pad_index = outBuf[1] - PAD1;
+          }
+          else if (outBuf[1] >= PAD9 and outBuf[1] <= PAD16){
+              pad_index = 8 + outBuf[1] - PAD9;
+          }
+          else {
+              pad_index = -1;
+          }
+
+          if (pad_index > -1) {
+            // Serial.print("PAD ");
+            // Serial.print(pad_index + 1, DEC);
+            // Serial.println(" pressed");
+
+            lk.pads[pad_index].pad_select_next_option();
+            patch.send_patch();
+          }
+
+          // Identify button
+          if (outBuf[1] == TOP_PLAY) {
+            // Serial.println("TOP_PLAY");
+          }
+
+          else if (outBuf[1] == BOTTOM_PLAY) {
+            // Serial.println("BOTTOM_PLAY pressed");
+          }
         }
         else {
-            pad_index = -1;
-        }
-
-        if (pad_index > -1) {
-          Serial.print("PAD ");
-          Serial.print(pad_index + 1, DEC);
-          Serial.println(" pressed");
-
-          lk.pads[pad_index].pad_select_next_option();
-        }
-
-        if (outBuf[1] == TOP_PLAY) {
-          Serial.println("TOP_PLAY");
-        }
-
-        else if (outBuf[1] == BOTTOM_PLAY) {
-          Serial.println("BOTTOM_PLAY pressed");
+          _MIDI_SERIAL_PORT.write(outBuf, size);
         }
       }
 
-      // channel 1 note_off
-      else if (outBuf[0] == 128) {}
-
       lk.controller_render_pads();
-      patch.send_patch();
     }
 
   } while (size > 0);
