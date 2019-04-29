@@ -1,6 +1,3 @@
 korg-volca-ground-control
 
-16.02
-
-Implemented basic Controller.Scene functionality like parsing data
-from the Launchkey and lighting pads + keyboard MIDI through
+USB-MIDI converter allowing you to control 3 Korg Volca synth (FM, Sample, Beats) with just one USB controller (currently implemented for Novation Launchkey Mini) with some neat tricks. 
