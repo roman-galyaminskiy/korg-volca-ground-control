@@ -58,7 +58,7 @@ struct Operator {
     {"egl1", 99}, {"egl2", 99}, {"egl3", 99}, {"egl4", 99},
     {"lsbp", 99}, {"lsld", 99}, {"lsrd", 99}, {"lslc", 3},
     {"lslr", 3}, {"krs ", 7}, {"ams ", 7}, {"kvs", 7},
-    {"olvl", 99}, {"fixd", 1}, {"fcrs", 31}, {"ffne", 99},
+    {"olvl", 99}, {"fixd", 1, 1}, {"fcrs", 31}, {"ffne", 99},
     {"detn", 14}
   };
 
@@ -75,7 +75,7 @@ struct Operator {
   void turnOn() {
       power = 1;
       parameters[OUTPUT_LEVEL].restorePreviousValue();
-      parameters[OSCILLATOR_MODE].restorePreviousValue();
+      parameters[OSCILLATOR_MODE].setValue(0);
       parameters[OSCILLATOR_FREQUENCY_COARSE].restorePreviousValue();
       parameters[OSCILLATOR_FREQUENCY_FINE].restorePreviousValue();
       parameters[DETUNE].restorePreviousValue();
