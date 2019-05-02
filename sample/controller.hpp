@@ -142,7 +142,7 @@ public:
       else {
         if (non_empty_message_flg == 1) {
           if (knob_index > -1 and knob_value) {
-              // mapper.knobRotated(knob_index, knob_value);
+              mapper.knobRotated(knob_index, knob_value);
             }
           }
           non_empty_message_flg = 0;

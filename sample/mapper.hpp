@@ -2,9 +2,16 @@
 #define MAPPER_HPP
 
 #define LEVEL 7
-#define ATTACK 47
-#define DECAY 48
+#define PAN 10
+#define SAMPLE_START_POINT 40
+#define SAMPLE_LENGTH 41
+#define HI_CUT 42
 #define SPEED 43
+#define PITCH_INT 44
+#define PITCH_ATTACK 45
+#define PITCH_DECAY 46
+#define AMPLITUDE_ATTACK 47
+#define AMPLITUDE_DECAY 48
 
 #define CONTROLLER_REMAP_MODE_OFF -2
 #define CONTROLLER_REMAP_MODE_SELECT_PAD -1
@@ -76,6 +83,9 @@ private:
     112, 113, 114, 115, 116, 117, 118, 119
   };
 
+  const uint8_t knob_mapping[8] = {LEVEL, SPEED, SAMPLE_START_POINT, SAMPLE_LENGTH,
+      PITCH_ATTACK, PITCH_DECAY, AMPLITUDE_ATTACK, AMPLITUDE_DECAY};
+
   Pad pads[16] = {
     {PAD1, 7}, {PAD2, 6}, {PAD3, 1}, {PAD4, 5}, {PAD5, 5}, {PAD6, 8}, {PAD7, 6}, {PAD8, 7},
     {PAD9, 2}, {PAD10, 3}, {PAD11, 0}, {PAD12, 4}, {PAD13, 4}, {PAD14, 0}, {PAD15, 3}, {PAD16, 2}
@@ -87,7 +97,7 @@ public:
     uint8_t note_on_msg[3] = {CHANNEL1_NOTE_ON, 0, 127};
 
     if (keyboard_mode > CONTROLLER_KEYBOARD_MODE_OFF) {
-      // Sending sample speed edit before and after keypress to avoid pitch ramp
+      // Sending control change before and after keypress to avoid pitch ramp
       // between notes
       control_change_msg[0] += pads[keyboard_mode].mapping;
       MIDI_SERIAL_PORT_1.write(control_change_msg, 3);
@@ -121,6 +131,15 @@ public:
       }
     }
     render();
+  }
+
+  void knobRotated(char knob_index, char knob_value) {
+    uint8_t control_change_msg[3] = {CHANNEL1_CONTROL_CHANGE, knob_mapping[knob_index], knob_value};
+
+    if (knob_mode > CONTROLLER_KNOB_MODE_OFF) {
+      control_change_msg[0] += pads[knob_mode].mapping;
+      MIDI_SERIAL_PORT_1.write(control_change_msg, 3);
+    }
   }
 
   void topPlayButtonPressed() {
