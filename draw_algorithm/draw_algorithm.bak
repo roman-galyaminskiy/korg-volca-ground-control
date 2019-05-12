@@ -1,0 +1,340 @@
+n#include "usb.hpp"
+#include "controller.hpp"
+
+//////////////////////////
+// MIDI Pin assign
+// 2 : GND
+// 4 : +5V(Vcc) with 220ohm
+// 5 : TX
+//////////////////////////
+
+#define SERIAL_MONITOR Serial
+
+// controller specific macro
+#define PAD1 96
+#define PAD2 97
+#define PAD3 98
+#define PAD4 99
+#define PAD5 100
+#define PAD6 101
+#define PAD7 102
+#define PAD8 103
+#define PAD9 112
+#define PAD10 113
+#define PAD11 114
+#define PAD12 115
+#define PAD13 116
+#define PAD14 117
+#define PAD15 118
+#define PAD16 119
+
+#define BLACK 0
+#define RED 15
+#define ORANGE 19
+#define YELLOW 21
+#define GREEN 24
+
+#define CHANNEL1_NOTE_ON 144
+
+Controller controller;
+
+void setup() {
+  SERIAL_MONITOR.begin(9600);
+  SERIAL_MONITOR.println("Checking USB...");
+  if (Usb.Init() == -1) {
+    while (1); //halt
+  }//if (Usb.Init() == -1...
+  delay( 200 );
+
+  SERIAL_MONITOR.println("SUCCESS");
+}
+
+void loop() {
+  // Enable 'inContorol' mode in order to light up pads
+  if (controller.getExtenderModeStatus() == 0) {
+    Usb.Task();
+    if ( Usb.getUsbTaskState() == USB_STATE_RUNNING ) {
+      controller.enableExtendedMode();
+      SERIAL_MONITOR.println("Controller is ready to use");
+      clearScreen();
+    }
+  }
+  else {
+    // put your main code here, to run repeatedly:
+    drawAlgorithm(7);
+    delay(100000);
+  }
+}
+
+const uint8_t pad_notes[16] = {
+  96, 97, 98, 99, 100, 101, 102, 103,
+  112, 113, 114, 115, 116, 117, 118, 119
+};
+
+void changePadColor(uint8_t pad_index, uint8_t color_code) {
+  uint8_t msg[3] = {CHANNEL1_NOTE_ON, pad_notes[pad_index], color_code};
+
+  Usb.Task();
+  Midi.SendData(msg, 1);
+  delay(1);
+}
+
+void clearScreen() {
+  for (char i = 0; i < 16; i++) {
+    changePadColor(i, RED);
+    // SERIAL_MONITOR.println("Screen cleared");
+  }
+}
+
+char algorithms[8][6] = {
+  {-1, 0, -1, 2, 3, 4},
+  {-1, 0, -1, 2, 3, 4},
+  {-1, 0, 1, -1, 3, 4},
+  {-1, 0, 1, -1, 3, 4},
+  {-1, 0, -1, 2, -1, 4},
+  {-1, 0, -1, 2, -1, 4},
+  {-1, 0, -1, 2, 3, 4},
+  {-1, 0, -1, 2, 3, 4}
+};
+
+char feedback[8][6] = {
+  {0, 0, 0, 0, 0, 1},
+  {0, 1, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 1},
+  {0, 0, 0, 1, 1, 1},
+  {0, 0, 0, 0, 0, 1},
+  {0, 0, 0, 0, 1, 1},
+  {0, 0, 0, 1, 0, 0},
+  {0, 0, 0, 0, 1, 1}
+};
+
+char getNextCarrier(char algorithm_index, char previous_carrier) {
+  // SERIAL_MONITOR.print("Looking for carrier from ");
+  // SERIAL_MONITOR.print(previous_carrier, DEC);
+  // SERIAL_MONITOR.println();
+  for (char i = previous_carrier + 1; i < 6; i++) {
+    if (algorithms[algorithm_index][i] == -1) {
+      // SERIAL_MONITOR.print("Found carrier: ");
+      // SERIAL_MONITOR.print(i, DEC);
+      // SERIAL_MONITOR.println();
+      return i;
+    }
+  }
+  delay(1000);
+  return -1;
+}
+
+char getCarrierPosition(char pad_index) {
+  if (pad_index == -1) {
+    return 8;
+  }
+  else {
+    // Top row
+    if (pad_index >=0 and pad_index <= 7) {
+      // 1 Pad marging from last colored pad
+      return pad_index + 8 + 2;
+    }
+    // Bottom row
+    else if (pad_index >=8 and pad_index <= 15) {
+      // 1 Pad marging from last colored pad
+      return pad_index + 2;
+    }
+  }
+}
+
+char drawCarrier(char algorithm_index, char operator_index, char pad_index) {
+  char position = getCarrierPosition(pad_index);
+  // SERIAL_MONITOR.print("Drawing carrier on pad ");
+  // SERIAL_MONITOR.print(position, DEC);
+  // SERIAL_MONITOR.println();
+  if (feedback[algorithm_index][operator_index] == 1) {
+    changePadColor(position, ORANGE);
+  }
+  else {
+    changePadColor(position, GREEN);
+  }
+
+  return position;
+}
+
+char getModulatorFor(char algorithm_index, char carrier, char previous_modulator) {
+  // SERIAL_MONITOR.print("FM: Looking for modulator for operator ");
+  // SERIAL_MONITOR.print(carrier, DEC);
+  // SERIAL_MONITOR.print(" from position ");
+  // SERIAL_MONITOR.print(previous_modulator, DEC);
+  // SERIAL_MONITOR.println();
+  for (char i = previous_modulator + 1; i < 6; i++) {
+    if (carrier == algorithms[algorithm_index][i]) {
+      // SERIAL_MONITOR.print("FM: Found modulator: ");
+      // SERIAL_MONITOR.print(i, DEC);
+      // SERIAL_MONITOR.println();
+      return i;
+    }
+  }
+  // delay(1000);
+  return -1;
+}
+
+char getModulatorPosition(char algorithm_index, char operator_index, char pad_index) {
+  char modulating_carrier_flag = 0;
+
+  SERIAL_MONITOR.print("Modulator ");
+  SERIAL_MONITOR.print(operator_index, DEC);
+  SERIAL_MONITOR.print(" is modulating ");
+  SERIAL_MONITOR.print(algorithms[algorithm_index][operator_index], DEC);
+  SERIAL_MONITOR.print(" that is modulating ");
+  SERIAL_MONITOR.print(algorithms[algorithm_index][algorithms[algorithm_index][operator_index]], DEC);
+  SERIAL_MONITOR.println();
+  delay(1000);
+  if (algorithms[algorithm_index][algorithms[algorithm_index][operator_index]] == -1) {
+    modulating_carrier_flag = 1;
+  }
+
+  // If it's the firstmodulator in chain
+  if (modulating_carrier_flag == 1) {
+    // If it's modulationg carrier directly
+    if (pad_index >= 8 and pad_index <= 18) {
+      return pad_index - 8;
+    }
+    //  If it' a new modulation branch for carrier, add extra margin
+    else if (pad_index >= 0 and pad_index <= 7) {
+      return pad_index + 2;
+    }
+  }
+  // If it's modulating modulator
+  else {
+    return pad_index + 1;
+  }
+}
+
+char drawModulator(char algorithm_index, char operator_index, char pad_index) {
+  char position = getModulatorPosition(algorithm_index, operator_index, pad_index);
+  // SERIAL_MONITOR.print("Drawing carrier on pad ");
+  // SERIAL_MONITOR.print(position, DEC);
+  // SERIAL_MONITOR.println();
+  if (feedback[algorithm_index][operator_index] == 1) {
+    changePadColor(position, ORANGE);
+  }
+  else {
+    changePadColor(position, YELLOW);
+  }
+
+  return position;
+}
+
+
+
+void listAlgorithm(char algorithm_index) {
+  for (char c = 0; c < 6; c++) {
+    // Carrier found
+    if (c == -1) {
+
+    }
+  }
+}
+
+void drawAlgorithm(char algorithm_index) {
+  // OP1 is always a carrier. Staring from bottom left pad
+  // SERIAL_MONITOR.println("Drawing PAD1");
+  changePadColor(8, GREEN);
+
+  // position_inside_algorithm
+  char carrier = -1;
+  char next_carrier = -1;
+  char modulator = -1;
+  char next_modulator = -1;
+  char modulated = -1;
+  char last_modified_pad_index = -1;
+
+  while (carrier < 5) {
+    next_carrier = getNextCarrier(algorithm_index, carrier);
+    if (next_carrier == -1) {
+      // SERIAL_MONITOR.println("C: No carrier found on this step");
+      carrier = carrier + 1;
+      // SERIAL_MONITOR.print("C: Incrementing to ");
+      // SERIAL_MONITOR.print(carrier, DEC);
+      // SERIAL_MONITOR.println();
+      // delay(1000);
+    }
+    else {
+      // SERIAL_MONITOR.println("C: Found carrier");
+      carrier = next_carrier;
+      // SERIAL_MONITOR.print("C: Incrementing to ");
+      // SERIAL_MONITOR.print(carrier, DEC);
+      // SERIAL_MONITOR.println();
+      last_modified_pad_index = drawCarrier(algorithm_index, carrier, last_modified_pad_index);
+      // delay(1000);
+
+      modulator = carrier;
+      modulated = carrier;
+
+      // Find all modulator for this carrier
+      while (modulator < 5) {
+        next_modulator = getModulatorFor(algorithm_index, modulated, modulator);
+        if (next_modulator == -1) {
+          // SERIAL_MONITOR.println("M: No modulator found on this step");
+          modulator = modulator + 1;
+          // SERIAL_MONITOR.print("M: Incrementing to ");
+          // SERIAL_MONITOR.print(modulator, DEC);
+          // SERIAL_MONITOR.println();
+          // delay(1000);
+        }
+        else {
+          // SERIAL_MONITOR.println("M: Found modulator");
+          modulator = next_modulator;
+          // SERIAL_MONITOR.print("M: Incrementing to ");
+          // SERIAL_MONITOR.print(modulator, DEC);
+          // SERIAL_MONITOR.println();
+          // SERIAL_MONITOR.print("M: Last modified pad index is ");
+          // SERIAL_MONITOR.print(last_modified_pad_index, DEC);
+          // SERIAL_MONITOR.println();
+          // delay(1000);
+
+          // Drawing single modulation cascade
+          while (modulator < 5) {
+            next_modulator = getModulatorFor(algorithm_index, modulated, modulator);
+            if (next_modulator == -1) {
+              // SERIAL_MONITOR.println("M: No modulator found on this step");
+              modulator = modulator + 1;
+              // SERIAL_MONITOR.print("M: Incrementing to ");
+              // SERIAL_MONITOR.print(modulator, DEC);
+              // SERIAL_MONITOR.println();
+              // delay(1000);
+            }
+            else {
+              // SERIAL_MONITOR.println("M: Found modulator");
+              modulator = next_modulator;
+              modulated = modulator;
+              // SERIAL_MONITOR.print("M: Incrementing to ");
+              // SERIAL_MONITOR.print(modulator, DEC);
+              // SERIAL_MONITOR.println();
+              // SERIAL_MONITOR.print("M: Last modified pad index is ");
+              // SERIAL_MONITOR.print(last_modified_pad_index, DEC);
+              // SERIAL_MONITOR.println();
+              // delay(1000);
+              last_modified_pad_index = drawModulator(algorithm_index, modulator, last_modified_pad_index);
+            }
+          }
+
+          last_modified_pad_index = drawModulator(algorithm_index, modulator, last_modified_pad_index);
+        }
+      }
+    }
+  }
+
+  // Omit OP1
+  // char last_modified_pad_index = PAD9;
+  // char op = 0;
+  // char c = 1;
+  //
+  //
+  // for (char i = c; i < 6; i++) {
+  //   if (algorithms[algorithm_index][i] == op) {
+  //     last_modified_pad_index = getModulatorPosition(PAD9);
+  //     changePadColor(last_modified_pad_index, YELLOW);
+  //   }
+  //
+  //   // We should find full cascade for current carrier before moving to other
+  //
+  // }
+}

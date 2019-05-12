@@ -35,7 +35,7 @@ public:
     // SERIAL_MONITOR.println("Extended mode enabled");
     }
 
-  void controller_listen() {
+  void listen() {
       uint8_t msg[3];
       char size;
 

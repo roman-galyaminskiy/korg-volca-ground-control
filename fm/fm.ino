@@ -32,6 +32,6 @@ void loop() {
       launchkey_mini.mapper.drawMainScreen();
       flag = 1;
     }
-    launchkey_mini.controller_listen();
+    launchkey_mini.listen();
   }
 }
