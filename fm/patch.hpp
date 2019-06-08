@@ -66,11 +66,55 @@ struct Operator {
 
   void setParameterValue(char param_index, char value) {
     parameters[param_index].previous_value = parameters[param_index].current_value;
-    parameters[param_index].current_value = parameters[param_index].max_value * value * 1.0/ 128.0;
+    parameters[param_index].current_value = parameters[param_index].max_value * value * 1.0/ 127.0;
 
     modified_parameter = 1;
-    sprintf(last_modified_parameter_code, "%d %4s %2i", index, parameters[param_index].display_code, parameters[param_index].current_value);
 
+    int fixed_frequency_coarce = 0;
+    double fixed_frequency_fine = 0.0;
+    int fixed_frequency = 0;
+
+    if (param_index == OSCILLATOR_FREQUENCY_COARSE or param_index == OSCILLATOR_FREQUENCY_FINE) {
+      if (parameters[OSCILLATOR_MODE].current_value == 0) {
+        if (parameters[OSCILLATOR_FREQUENCY_COARSE].current_value < 10 and parameters[OSCILLATOR_FREQUENCY_FINE].current_value < 10) {
+          sprintf(last_modified_parameter_code, "%d F 0%i_0%i", index, parameters[OSCILLATOR_FREQUENCY_COARSE].current_value, parameters[OSCILLATOR_FREQUENCY_FINE].current_value);
+        }
+        else if (parameters[OSCILLATOR_FREQUENCY_COARSE].current_value < 10 and parameters[OSCILLATOR_FREQUENCY_FINE].current_value >= 10) {
+          sprintf(last_modified_parameter_code, "%d F 0%i_%2i", index, parameters[OSCILLATOR_FREQUENCY_COARSE].current_value, parameters[OSCILLATOR_FREQUENCY_FINE].current_value);
+        }
+        else if (parameters[OSCILLATOR_FREQUENCY_COARSE].current_value >= 10 and parameters[OSCILLATOR_FREQUENCY_FINE].current_value < 10) {
+          sprintf(last_modified_parameter_code, "%d F %2i_0%i", index, parameters[OSCILLATOR_FREQUENCY_COARSE].current_value, parameters[OSCILLATOR_FREQUENCY_FINE].current_value);
+        }
+        else if (parameters[OSCILLATOR_FREQUENCY_COARSE].current_value >= 10 and parameters[OSCILLATOR_FREQUENCY_FINE].current_value >= 10) {
+          sprintf(last_modified_parameter_code, "%d F %2i_%2i", index, parameters[OSCILLATOR_FREQUENCY_COARSE].current_value, parameters[OSCILLATOR_FREQUENCY_FINE].current_value);
+        }
+      }
+      else {
+        if (parameters[OSCILLATOR_FREQUENCY_COARSE].current_value == 0) {
+          fixed_frequency_coarce = 1;
+        }
+        else if (parameters[OSCILLATOR_FREQUENCY_COARSE].current_value == 1) {
+          fixed_frequency_coarce = 10;
+        }
+        else if (parameters[OSCILLATOR_FREQUENCY_COARSE].current_value == 2) {
+          fixed_frequency_coarce = 100;
+        }
+        else if (parameters[OSCILLATOR_FREQUENCY_COARSE].current_value == 3) {
+          fixed_frequency_coarce = 1000;
+        }
+        else {
+          fixed_frequency_coarce = 0;
+        }
+
+        fixed_frequency_fine = exp(parameters[OSCILLATOR_FREQUENCY_FINE].current_value / 43.43);
+        fixed_frequency = fixed_frequency_coarce * fixed_frequency_fine;
+
+        sprintf(last_modified_parameter_code, "%d F%4iHZ", index, fixed_frequency);
+      }
+    }
+    else {
+      sprintf(last_modified_parameter_code, "%d %4s %2i", index, parameters[param_index].display_code, parameters[param_index].current_value);
+    }
     // SERIAL_MONITOR.println(last_modified_parameter_code);
   }
 
@@ -140,10 +184,37 @@ struct All {
 
   void setParameterValue(char param_index, char value) {
     parameters[param_index].previous_value = parameters[param_index].current_value;
-    parameters[param_index].current_value = parameters[param_index].max_value * value / 128.0;;
+    parameters[param_index].current_value = parameters[param_index].max_value * value / 127.0;;
 
     modified_parameter = 1;
-    sprintf(last_modified_parameter_code, "A %4s %2i", parameters[param_index].display_code, parameters[param_index].current_value);
+
+    if (param_index == ALGORITHM) {
+      sprintf(last_modified_parameter_code, "A %4s %2i", parameters[param_index].display_code, parameters[param_index].current_value + 1);
+    }
+    else if (param_index == LFO_WAVE) {
+      if (parameters[param_index].current_value == 0) {
+        sprintf(last_modified_parameter_code, "A %4s TR", parameters[param_index].display_code);
+      }
+      else if (parameters[param_index].current_value == 1) {
+        sprintf(last_modified_parameter_code, "A %4s SD", parameters[param_index].display_code);
+      }
+      else if (parameters[param_index].current_value == 2) {
+        sprintf(last_modified_parameter_code, "A %4s SU", parameters[param_index].display_code);
+      }
+      else if (parameters[param_index].current_value == 3) {
+        sprintf(last_modified_parameter_code, "A %4s SR", parameters[param_index].display_code);
+      }
+      else if (parameters[param_index].current_value == 4) {
+        sprintf(last_modified_parameter_code, "A %4s SN", parameters[param_index].display_code);
+      }
+      else if (parameters[param_index].current_value == 5) {
+        sprintf(last_modified_parameter_code, "A %4s SH", parameters[param_index].display_code);
+      }
+    }
+    else {
+      sprintf(last_modified_parameter_code, "A %4s %2i", parameters[param_index].display_code, parameters[param_index].current_value);
+    }
+
 
     // SERIAL_MONITOR.println(last_modified_parameter_code);
   }
@@ -195,7 +266,6 @@ struct Patch {
     }
     // Looking for a parameter that was changed and sending short descripltion
     // instead of patch name
-    // SERIAL_MONITOR.println(patch_name);
     else {
       for (char i = 0; i < 6; i++) {
         if (operators[i].modified_parameter == 1) {
@@ -207,12 +277,12 @@ struct Patch {
         strncpy(patch_name, all.getLastModifiedParam(), DISPLAY_CODE_LENGTH);
       }
     }
+    SERIAL_MONITOR.println(patch_name);
 
     // Collect subentities data
     for (char i = 0; i < 6; i++) {
       operators[i].getParameterValues();
     }
-    operators[4].getParameterValues();
 
     all.getParameterValues();
 
@@ -221,7 +291,7 @@ struct Patch {
     }
 
     // Collecting operator ON/OFF status
-    char operators_power_status = operators[OP2].power + 2 * operators[OP2].power +
+    char operators_power_status = operators[OP1].power + 2 * operators[OP2].power +
       4 * operators[OP3].power + 8 * operators[OP4].power + 16 * operators[OP5].power +
       32 * operators[OP6].power;
 
@@ -239,21 +309,116 @@ struct Patch {
 
   // Display selected parameter name and value instead of patch name
   void showParameterValue(char patch_subentity, char param_index) {
+
+    int fixed_frequency_coarce = 0;
+    double fixed_frequency_fine = 0.0;
+    int fixed_frequency = 0;
+
     // Message header
     beginSysex();
 
     char parameter_value_text[DISPLAY_CODE_LENGTH];
 
     if (patch_subentity == -1) {
-      sprintf(parameter_value_text, "A %4s %2i",
-        all.parameters[param_index].display_code, all.parameters[param_index].current_value);
+      if (param_index == ALGORITHM) {
+        sprintf(parameter_value_text, "A %4s %2i",
+          all.parameters[param_index].display_code, all.parameters[param_index].current_value + 1);
+      }
+      else if (param_index == LFO_WAVE) {
+        if (all.parameters[param_index].current_value == 0) {
+          sprintf(parameter_value_text, "A %4s TR", all.parameters[param_index].display_code);
+        }
+        else if (all.parameters[param_index].current_value == 1) {
+          sprintf(parameter_value_text, "A %4s SD", all.parameters[param_index].display_code);
+        }
+        else if (all.parameters[param_index].current_value == 2) {
+          sprintf(parameter_value_text, "A %4s SU", all.parameters[param_index].display_code);
+        }
+        else if (all.parameters[param_index].current_value == 3) {
+          sprintf(parameter_value_text, "A %4s SR", all.parameters[param_index].display_code);
+        }
+        else if (all.parameters[param_index].current_value == 4) {
+          sprintf(parameter_value_text, "A %4s SN", all.parameters[param_index].display_code);
+        }
+        else if (all.parameters[param_index].current_value == 5) {
+          sprintf(parameter_value_text, "A %4s SH", all.parameters[param_index].display_code);
+        }
+      }
+      else {
+        sprintf(parameter_value_text, "A %4s %2i",
+          all.parameters[param_index].display_code, all.parameters[param_index].current_value);
+      }
     }
     else {
-      sprintf(parameter_value_text, "%d %4s %2i",
-        operators[patch_subentity].index,
-        operators[patch_subentity].parameters[param_index].display_code,
-        operators[patch_subentity].parameters[param_index].current_value
-      );
+      if (param_index == OSCILLATOR_FREQUENCY_COARSE or param_index == OSCILLATOR_FREQUENCY_FINE) {
+        if (operators[patch_subentity].parameters[OSCILLATOR_MODE].current_value == 0) {
+          if (operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_COARSE].current_value < 10
+            and operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_FINE].current_value < 10) {
+              sprintf(
+                parameter_value_text, "%d F 0%i_0%i",
+                operators[patch_subentity].index,
+                operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_COARSE].current_value,
+                operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_FINE].current_value
+              );
+          }
+          else if (operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_COARSE].current_value < 10
+            and operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_FINE].current_value >= 10) {
+              sprintf(
+                parameter_value_text, "%d F 0%i_%2i",
+                operators[patch_subentity].index,
+                operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_COARSE].current_value,
+                operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_FINE].current_value
+              );
+          }
+          else if (operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_COARSE].current_value >= 10
+            and operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_FINE].current_value < 10) {
+              sprintf(
+                parameter_value_text, "%d F %2i_0%i",
+                operators[patch_subentity].index,
+                operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_COARSE].current_value,
+                operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_FINE].current_value
+              );
+          }
+          else if (operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_COARSE].current_value >= 10
+            and operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_FINE].current_value >= 10) {
+              sprintf(
+                parameter_value_text, "%d F %2i_%2i",
+                operators[patch_subentity].index,
+                operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_COARSE].current_value,
+                operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_FINE].current_value
+              );
+          }
+        }
+        else {
+          if (operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_COARSE].current_value == 0) {
+            fixed_frequency_coarce = 1;
+          }
+          else if (operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_COARSE].current_value == 1) {
+            fixed_frequency_coarce = 10;
+          }
+          else if (operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_COARSE].current_value == 2) {
+            fixed_frequency_coarce = 100;
+          }
+          else if (operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_COARSE].current_value == 3) {
+            fixed_frequency_coarce = 1000;
+          }
+          else {
+            fixed_frequency_coarce = 0;
+          }
+
+          fixed_frequency_fine = exp(operators[patch_subentity].parameters[OSCILLATOR_FREQUENCY_FINE].current_value / 43.43);
+          fixed_frequency = fixed_frequency_coarce * fixed_frequency_fine;
+
+          sprintf(parameter_value_text, "%d F%4iHZ", operators[patch_subentity].index, fixed_frequency);
+        }
+      }
+      else {
+        sprintf(parameter_value_text, "%d %4s %2i",
+          operators[patch_subentity].index,
+          operators[patch_subentity].parameters[param_index].display_code,
+          operators[patch_subentity].parameters[param_index].current_value
+        );
+      }
     }
 
     // SERIAL_MONITOR.print("Showing following text: ");
