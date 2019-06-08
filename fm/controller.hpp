@@ -53,6 +53,12 @@ public:
         // SERIAL_MONITOR.print(msg[2], DEC);
         // SERIAL_MONITOR.println();
 
+        // We pass "note on" and "note off" as they come, but "control change"
+        // event from knobs require additional processing. If we pass them as they
+        // come 0 to 127, for exmaple, all 127 messages will be sent to synth,
+        // and not very fast at reading them. That why we sent knob data only step
+        // after the last received "control change" messsage
+
         if (msg[0] == CHANNEL1_NOTE_ON) {
           if (msg[1] >= PAD1 and msg[1] <= PAD8 or msg[1] >= PAD9 and msg[1] <= PAD16
             or msg[1] == TOP_PLAY or msg[1] == BOTTOM_PLAY) {
@@ -86,7 +92,6 @@ public:
           if (msg[1] >= PAD1 and msg[1] <= PAD8 or msg[1] >= PAD9 and msg[1] <= PAD16
             or msg[1] == TOP_PLAY or msg[1] == BOTTOM_PLAY) {
             knob_index = -1;
-            knob_value = 0;
             non_empty_message_flg = 1;
 
             // Identify pad
@@ -129,10 +134,11 @@ public:
           else if (msg[1] = SCENE_UP and msg[2] == 127) {}
           else if (msg[1] = SCENE_DOWN and msg[2] == 127) {}
         }
+        // delay(10);
       }
       else {
         if (non_empty_message_flg == 1) {
-          if (knob_index > -1 and knob_value) {
+          if (knob_index > -1) {
               mapper.knobRotated(knob_index, knob_value);
             }
           }

@@ -1,7 +1,7 @@
 #ifndef DEFINITIONS_HPP
 #define DEFINITIONS_HPP
-// #define SERIAL_MONITOR Serial
-#define MIDI_SERIAL_PORT_1 Serial
+#define SERIAL_MONITOR Serial
+#define MIDI_SERIAL_PORT_1 Serial2
 // #define MIDI_SERIAL_PORT_2 Serial2
 //////////////////////////
 // MIDI Pin assign
@@ -64,6 +64,8 @@
 #define OP5 1
 #define OP6 0
 #define ALL -1
+
+#define OPERATORS_NUMBER 6
 
 #define EG_RATE_1 0
 #define EG_RATE_2 1
