@@ -65,6 +65,7 @@ struct Operator {
   };
 
   void setParameterValue(char param_index, char value) {
+    // SERIAL_MONITOR.println("setParameterValue_started");
     parameters[param_index].previous_value = parameters[param_index].current_value;
     parameters[param_index].current_value = parameters[param_index].max_value * value * 1.0/ 127.0;
 
@@ -262,6 +263,7 @@ struct Patch {
     char patch_name[DISPLAY_CODE_LENGTH];
 
     if (display_message != 0) {
+      // SERIAL_MONITOR.println("display_message is not empty");
       strncpy(patch_name, display_message, DISPLAY_CODE_LENGTH);
     }
     // Looking for a parameter that was changed and sending short descripltion
@@ -277,6 +279,7 @@ struct Patch {
         strncpy(patch_name, all.getLastModifiedParam(), DISPLAY_CODE_LENGTH);
       }
     }
+    SERIAL_MONITOR.print("sendPatchData: patch_name ");
     SERIAL_MONITOR.println(patch_name);
 
     // Collect subentities data

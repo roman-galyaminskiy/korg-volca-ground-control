@@ -5,20 +5,22 @@
 Controller launchkey_mini;
 
 void setup() {
-  // SERIAL_MONITOR.begin(9600);
+  SERIAL_MONITOR.begin(9600);
   MIDI_SERIAL_PORT_1.begin(31250);
 
-  // SERIAL_MONITOR.println("Checking USB...");
+   SERIAL_MONITOR.println("Checking USB...");
   if (Usb.Init() == -1) {
     while (1); //halt
   }//if (Usb.Init() == -1...
   delay( 200 );
 
-  // SERIAL_MONITOR.println("SUCCESS");
+   SERIAL_MONITOR.println("SUCCESS");
 }
 
 void loop() {
   static char flag;
+  char display_message[DISPLAY_CODE_LENGTH] = "main";
+
   if (launchkey_mini.getExtenderModeStatus() == 0) {
     Usb.Task();
     if ( Usb.getUsbTaskState() == USB_STATE_RUNNING ) {
@@ -30,6 +32,7 @@ void loop() {
   else {
     if (flag == 0) {
       launchkey_mini.mapper.drawMainScreen();
+      launchkey_mini.mapper.patch.sendSysexMessage(display_message);
       flag = 1;
     }
     launchkey_mini.listen();

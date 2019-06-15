@@ -62,6 +62,8 @@ public:
         if (msg[0] == CHANNEL1_NOTE_ON) {
           if (msg[1] >= PAD1 and msg[1] <= PAD8 or msg[1] >= PAD9 and msg[1] <= PAD16
             or msg[1] == TOP_PLAY or msg[1] == BOTTOM_PLAY) {
+            knob_index = -1;
+            non_empty_message_flg = 1;
 
             // Identify pad
             if (msg[1] >= PAD1 and msg[1] <= PAD8) {
@@ -79,9 +81,13 @@ public:
             }
 
             // Identify buttons
-            if (msg[1] == TOP_PLAY) {}
+            if (msg[1] == TOP_PLAY) {
+              mapper.topPlayButtonPressed();
+            }
 
-            else if (msg[1] == BOTTOM_PLAY) {}
+            else if (msg[1] == BOTTOM_PLAY) {
+              mapper.bottomPlayButtonPressed();
+            }
           }
           // Keyboard
           else {
@@ -126,9 +132,11 @@ public:
           }
           // Other buttons
           else if (msg[1] == TRACK_LEFT and msg[2] == 127) {
+            knob_index = -1;
             mapper.trackChanged(-1);
           }
           else if (msg[1] == TRACK_RIGHT and msg[2] == 127) {
+            knob_index = -1;
             mapper.trackChanged(1);
           }
           else if (msg[1] = SCENE_UP and msg[2] == 127) {}

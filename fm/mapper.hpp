@@ -68,6 +68,9 @@ public:
   }
 
   void drawMainScreen() {
+    // char display_message[DISPLAY_CODE_LENGTH] = "main";
+    // patch.sendSysexMessage(display_message);
+
     // SERIAL_MONITOR.println("Main screen");
     active_screen_type = MAIN_SCREEN;
 
@@ -146,9 +149,26 @@ public:
   }
 
   void drawGroupScreen() {
-    // SERIAL_MONITOR.println("Group screen");
+    SERIAL_MONITOR.println("drawGroupScreen_started");
     active_screen_type = PARAM_GROUP_SCREEN;
     active_param_group = -1;
+
+    char display_message[DISPLAY_CODE_LENGTH];
+
+    SERIAL_MONITOR.print("editing_operator_index ");
+    SERIAL_MONITOR.print(editing_operator_index, DEC);
+    SERIAL_MONITOR.print(" editing_all_flag ");
+    SERIAL_MONITOR.print(editing_all_flag, DEC);
+    SERIAL_MONITOR.println();
+
+    if (editing_operator_index > -1) {
+      sprintf(display_message, "OP %i", patch.operators[editing_operator_index].index);
+    }
+    else if (editing_all_flag == 1) {
+      sprintf(display_message, "ALL");
+    }
+
+    patch.sendSysexMessage(display_message);
 
     // Drawing top raw
     for (char pad_index = 0; pad_index < 8; pad_index++) {
@@ -186,12 +206,31 @@ public:
   }
 
   void drawParamScreen(char param_group = -1) {
-    // SERIAL_MONITOR.println("Param screen");
     active_screen_type = PARAM_SCREEN;
 
     if (param_group > -1) {
       active_param_group = param_group;
     }
+
+    SERIAL_MONITOR.println("drawParamScreen_started");
+
+    char display_message[DISPLAY_CODE_LENGTH];
+
+    SERIAL_MONITOR.print("editing_operator_index ");
+    SERIAL_MONITOR.print(editing_operator_index, DEC);
+    SERIAL_MONITOR.print(" editing_all_flag ");
+    SERIAL_MONITOR.print(editing_all_flag, DEC);
+    SERIAL_MONITOR.println();
+
+    if (editing_operator_index > -1) {
+      sprintf(display_message, "%i %s", patch.operators[editing_operator_index].index, parameter_group_names[0][active_param_group]);
+    }
+    else if (editing_all_flag == 1){
+      sprintf(display_message, "A %s", parameter_group_names[1][active_param_group]);
+    }
+    // SERIAL_MONITOR.println(display_message);
+
+    patch.sendSysexMessage(display_message);
 
     // Drawing top raw
     for (char pad_index = 0; pad_index < 8; pad_index++) {
@@ -234,7 +273,12 @@ public:
     for (char pad_index = 0; pad_index < 8; pad_index++) {
       // Pads 1-6 represent operators
       if (pad_index < 6) {
-        changePadColor(pad_index, YELLOW);
+        if (pad_index == patch.operators[editing_operator_index].index - 1) {
+          changePadColor(pad_index, GREEN);
+        }
+        else {
+          changePadColor(pad_index, YELLOW);
+        }
       }
       else {
         changePadColor(pad_index, BLACK);
@@ -462,9 +506,6 @@ public:
         getModulatorFor(operator_index);
       }
     }
-
-    // Draw return button
-    changePadColor(ALGORITHM_RETURN_PAD_INDEX, ALGORITHM_RETURN_PAD_COLOR);
   }
 
   //###########################################################################
@@ -473,25 +514,25 @@ public:
 
   void keyPressed(uint8_t key_note) {
     uint8_t msg[3] = {CHANNEL1_NOTE_ON, key_note, 127};
-    SERIAL_MONITOR.print("keyPressed ");
-    SERIAL_MONITOR.print(msg[0], DEC);
-    SERIAL_MONITOR.print(" ");
-    SERIAL_MONITOR.print(msg[1], DEC);
-    SERIAL_MONITOR.print(" ");
-    SERIAL_MONITOR.print(msg[2], DEC);
-    SERIAL_MONITOR.println();
+    // SERIAL_MONITOR.print("keyPressed ");
+    // SERIAL_MONITOR.print(msg[0], DEC);
+    // SERIAL_MONITOR.print(" ");
+    // SERIAL_MONITOR.print(msg[1], DEC);
+    // SERIAL_MONITOR.print(" ");
+    // SERIAL_MONITOR.print(msg[2], DEC);
+    // SERIAL_MONITOR.println();
     MIDI_SERIAL_PORT_1.write(msg, 3);
   }
 
   void keyReleased(uint8_t key_note) {
     uint8_t msg[3] = {CHANNEL1_NOTE_OFF, key_note, 127};
-    SERIAL_MONITOR.print("keyReleased ");
-    SERIAL_MONITOR.print(msg[0], DEC);
-    SERIAL_MONITOR.print(" ");
-    SERIAL_MONITOR.print(msg[1], DEC);
-    SERIAL_MONITOR.print(" ");
-    SERIAL_MONITOR.print(msg[2], DEC);
-    SERIAL_MONITOR.println();
+    // SERIAL_MONITOR.print("keyReleased ");
+    // SERIAL_MONITOR.print(msg[0], DEC);
+    // SERIAL_MONITOR.print(" ");
+    // SERIAL_MONITOR.print(msg[1], DEC);
+    // SERIAL_MONITOR.print(" ");
+    // SERIAL_MONITOR.print(msg[2], DEC);
+    // SERIAL_MONITOR.println();
     MIDI_SERIAL_PORT_1.write(msg, 3);
   }
 
@@ -590,12 +631,9 @@ public:
       }
     }
     else if (active_screen_type == PARAM_GROUP_SCREEN) {
-      // SERIAL_MONITOR.println("from group screen");
-      // Processing top row
       if (editing_operator_index > -1 and pad_index < OPERATOR_GROUPS) {
         drawParamScreen(pad_index);
       }
-      // Processing bottom row
       else if (editing_all_flag == 1 and pad_index < ALL_GROUPS) {
         drawParamScreen(pad_index);
       }
@@ -609,6 +647,7 @@ public:
       if (pad_index >= 0 and pad_index < 8) {
         if (editing_operator_index > -1) {
           if (pad_index < parameter_group_lengths[0][active_param_group]) {
+            active_param_index = pad_index;
             // SERIAL_MONITOR.print("Show param ");
             // SERIAL_MONITOR.print(pad_index, DEC);
             // SERIAL_MONITOR.print(" from group ");
@@ -618,11 +657,12 @@ public:
             // SERIAL_MONITOR.print(" for operator ");
             // SERIAL_MONITOR.print(editing_operator_index, DEC);
             // SERIAL_MONITOR.println();
-            patch.showParameterValue(editing_operator_index, parameters[0][active_param_group][pad_index]);
+            patch.showParameterValue(editing_operator_index, parameters[0][active_param_group][active_param_index]);
           }
         }
         else {
           if (pad_index < parameter_group_lengths[1][active_param_group]) {
+            active_param_index = pad_index;
             // SERIAL_MONITOR.print("Show param ");
             // SERIAL_MONITOR.print(pad_index, DEC);
             // SERIAL_MONITOR.print(" from group ");
@@ -632,8 +672,8 @@ public:
             // SERIAL_MONITOR.print(" for all ");
             // SERIAL_MONITOR.print(editing_operator_index, DEC);
             // SERIAL_MONITOR.println();
-            patch.showParameterValue(editing_operator_index, parameters[1][active_param_group][pad_index]);
-            if (parameters[1][active_param_group][pad_index] == ALGORITHM) {
+            patch.showParameterValue(editing_operator_index, parameters[1][active_param_group][active_param_index]);
+            if (parameters[1][active_param_group][active_param_index] == ALGORITHM) {
               drawAlgorithm();
             }
           }
@@ -647,9 +687,7 @@ public:
       }
     }
     else if (active_screen_type == ALGORITHM_DISPLAY_SCREEN) {
-      if (pad_index == ALGORITHM_RETURN_PAD_INDEX) {
-        drawParamScreen();
-      }
+      drawParamScreen();
     }
     else if (active_screen_type == OPERATOR_SELECT_SCREEN) {
       if (pad_index == 0) {
@@ -735,12 +773,20 @@ public:
         drawParamScreen();
       }
       else if (active_screen_type == PARAM_SCREEN) {
-        drawOperatorSelectionScreen();
+        if (editing_operator_index > -1) {
+          drawOperatorSelectionScreen();
+
+          char display_message[DISPLAY_CODE_LENGTH];
+          sprintf(display_message, "copy %d to", patch.operators[editing_operator_index].index);
+
+          patch.sendSysexMessage(display_message);
+        }
       }
     }
   }
 
   void knobRotated(char knob_index, char value) {
+    SERIAL_MONITOR.println("knobRotated_started");
     if (active_screen_type == PARAM_SCREEN or active_screen_type == ALGORITHM_DISPLAY_SCREEN) {
       if (editing_operator_index > -1) {
         if (knob_index < parameter_group_lengths[0][active_param_group]) {
@@ -781,30 +827,67 @@ public:
 
     if (active_screen_type == PARAM_GROUP_SCREEN or active_screen_type == PARAM_SCREEN) {
       if (direction == 1) {
+        // SERIAL_MONITOR.println("DIRECTION UP");
         if (editing_operator_index > -1 and editing_operator_index > OP6) {
           editing_operator_index--;
-          sprintf(display_message, "OP %1i", patch.operators[editing_operator_index].index);
-          patch.sendSysexMessage(display_message);
+
+          if (active_screen_type == PARAM_SCREEN) {
+            if (active_param_index > -1) {
+              patch.showParameterValue(editing_operator_index, parameters[0][active_param_group][active_param_index]);
+            }
+            else {
+              patch.showParameterValue(editing_operator_index, parameters[0][active_param_group][0]);
+            }
+
+          }
+          else {
+            sprintf(display_message, "OP %1i", patch.operators[editing_operator_index].index);
+            patch.sendSysexMessage(display_message);
+          }
         }
         else if (editing_operator_index > -1 and editing_operator_index == OP6) {
           editing_operator_index = -1;
           editing_all_flag = 1;
-          sprintf(display_message, "ALL");
-          patch.sendSysexMessage(display_message);
+
+          if (active_screen_type == PARAM_SCREEN) {
+            if (active_param_index > -1) {
+              patch.showParameterValue(editing_operator_index, parameters[1][active_param_group][active_param_index]);
+            }
+            else {
+              patch.showParameterValue(editing_operator_index, parameters[1][active_param_group][0]);
+            }
+          }
+          else {
+            sprintf(display_message, "ALL");
+            patch.sendSysexMessage(display_message);
+          }
         }
 
       }
       else if (direction == -1) {
+        // SERIAL_MONITOR.println("DIRECTION DOWN");
         if (editing_all_flag == 1) {
           editing_all_flag = 0;
           editing_operator_index = OP6;
-          sprintf(display_message, "OP %1i", patch.operators[editing_operator_index].index);
-          patch.sendSysexMessage(display_message);
+
+          if (active_screen_type == PARAM_SCREEN) {
+            patch.showParameterValue(editing_operator_index, parameters[0][active_param_group][active_param_index]);
+          }
+          else {
+            sprintf(display_message, "OP %1i", patch.operators[editing_operator_index].index);
+            patch.sendSysexMessage(display_message);
+          }
         }
         else if (editing_operator_index > -1 and editing_operator_index < OP1) {
           editing_operator_index++;
-          sprintf(display_message, "OP %1i", patch.operators[editing_operator_index].index);
-          patch.sendSysexMessage(display_message);
+
+          if (active_screen_type == PARAM_SCREEN) {
+            patch.showParameterValue(editing_operator_index, parameters[0][active_param_group][active_param_index]);
+          }
+          else {
+            sprintf(display_message, "OP %1i", patch.operators[editing_operator_index].index);
+            patch.sendSysexMessage(display_message);
+          }
         }
       }
     }
@@ -815,6 +898,7 @@ private:
   char editing_operator_index = -1;
   char editing_all_flag = 0;
   char active_param_group = -1;
+  char active_param_index = -1;
   char top_play_button_pressed = 0;
 
   const uint8_t pad_notes[16] = {
@@ -860,15 +944,21 @@ private:
       },
       {
         LFO_SPEED, LFO_DELAY, LFO_PITCH_MODULATION_DEPTH, LFO_AMPLITUDE_MODULATION_DEPTH,
-        LFO_SYNC, LFO_WAVE, MODULATION_SENSITIVITY_PITCH
+        LFO_SYNC, LFO_WAVE, MODULATION_SENSITIVITY_PITCH, OSCILLATOR_SYNC
       },
       {
-        ALGORITHM, FEEDBACK, TRANSPOSE, OSCILLATOR_SYNC
+        ALGORITHM, FEEDBACK, TRANSPOSE
       }
     }
   };
+
   const char parameter_group_lengths[2][3] = {
-    {8, 6, 7}, {8, 6, 4}
+    {8, 6, 7}, {8, 8, 3}
+  };
+
+  const char parameter_group_names[2][3][10] = {
+    {"lvl eg", "scale", "osc"},
+    {"pcht eg", "lfo", "prog"}
   };
 
   char last_drawn_pad_index = -1;
