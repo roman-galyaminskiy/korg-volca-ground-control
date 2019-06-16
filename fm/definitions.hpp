@@ -49,6 +49,8 @@
 #define CHANNEL1_NOTE_OFF 128
 #define CHANNEL1_CONTROL_CHANGE 176
 
+#define VELOCITY 41
+
 // fm specific macro
 #define DISPLAY_CODE_LENGTH 10
 

@@ -37,6 +37,7 @@ public:
 
   void listen() {
       uint8_t msg[3];
+      uint8_t velocity_message[3] = {VELOCITY, 41, 0};
       char size;
 
       char pad_index = -1;
@@ -91,6 +92,16 @@ public:
           }
           // Keyboard
           else {
+            velocity_message[2] = msg[2];
+            MIDI_SERIAL_PORT_1.write(velocity_message, size);
+
+            // SERIAL_MONITOR.print(velocity_message[0], DEC);
+            // SERIAL_MONITOR.print(" ");
+            // SERIAL_MONITOR.print(velocity_message[1], DEC);
+            // SERIAL_MONITOR.print(" ");
+            // SERIAL_MONITOR.print(velocity_message[2], DEC);
+            // SERIAL_MONITOR.println();
+
             MIDI_SERIAL_PORT_1.write(msg, size);
           }
         }
