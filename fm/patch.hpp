@@ -310,6 +310,200 @@ struct Patch {
     endSysex();
   }
 
+  void receiveSysex() {
+    // SERIAL_MONITOR.println("receiveSysex");
+
+    char patch_name[DISPLAY_CODE_LENGTH];
+    char param_index = 0;
+    char op_index = 0;
+    char name_index = -1;
+
+    int incomingByte;
+    static int i = -1;
+    static int d = 0;
+    static int a[170];
+    int r;
+    // send data only when you receive data:
+    if (MIDI_SERIAL_PORT_1.available() > 0) {
+      // read the incoming byte:
+      incomingByte = MIDI_SERIAL_PORT_1.read();
+
+      // SERIAL_MONITOR.print(incomingByte, DEC);
+      // SERIAL_MONITOR.println();
+
+      if (i == -1) {
+        for (size_t j = 0; j < 170; j++) {
+          a[j] = 0;
+        }
+      }
+
+      if (i == 5) {
+        if (incomingByte == 247) {
+          SERIAL_MONITOR.print(d, DEC);
+          SERIAL_MONITOR.println(" end");
+
+          i = -1;
+
+          for (size_t j = 0; j <= d; j++) {
+            // SERIAL_MONITOR.print(a[j], DEC);
+            // SERIAL_MONITOR.print(" ");
+            // SERIAL_MONITOR.write(a[j]);
+            // SERIAL_MONITOR.println();
+
+            if (op_index >= 0 and op_index <= 5) {
+              // SERIAL_MONITOR.print(op_index, DEC);
+              // SERIAL_MONITOR.print(" ");
+              // SERIAL_MONITOR.print(param_index, DEC);
+              // SERIAL_MONITOR.println();
+              if (operators[op_index].parameters[param_index].max_value >= a[j]) {
+                operators[op_index].parameters[param_index].setValue(a[j]);
+              }
+              else {
+                operators[op_index].parameters[param_index].setValue(0);
+              }
+            }
+            else {
+              // SERIAL_MONITOR.print("all ");
+              // SERIAL_MONITOR.print(param_index, DEC);
+              // SERIAL_MONITOR.println();
+              if (all.parameters[param_index].max_value >= a[j]) {
+                all.parameters[param_index].setValue(a[j]);
+              }
+              else {
+                all.parameters[param_index].setValue(0);
+              }
+            }
+
+            if (op_index >= 0 and op_index <= 5 and param_index < 20) {
+              param_index++;
+            }
+            else if (op_index >= 0 and op_index < 5 and param_index == 20) {
+                op_index++;
+                param_index = 0;
+            }
+            else if (op_index >= 0 and op_index == 5 and param_index == 20) {
+                op_index = -1;
+                param_index = 0;
+            }
+            else if (op_index == -1 and param_index < 18) {
+                param_index++;
+            }
+            else if (op_index == -1 and param_index == 18) {
+                param_index++;
+                name_index = 0;
+                // SERIAL_MONITOR.println("Done");
+            }
+            else if (op_index == -1 and name_index > -1 and name_index <= 10) {
+                name_index++;
+                patch_name[name_index] = a[j];
+                // SERIAL_MONITOR.write(a[j]);
+                // SERIAL_MONITOR.println();
+            }
+            else {
+              // SERIAL_MONITOR.print("On/off ");
+              // SERIAL_MONITOR.println();
+
+              operators[0].power = a[j] & 1;
+              // SERIAL_MONITOR.print(a[j] & 1, BIN);
+              // SERIAL_MONITOR.println();
+
+              operators[1].power = (a[j] & (1 << 1)) >> 1;
+              // SERIAL_MONITOR.print((a[j] & (1 << 1)) >> 1, BIN);
+              // SERIAL_MONITOR.println();
+
+              operators[2].power = (a[j] & (1 << 2)) >> 2;
+              // SERIAL_MONITOR.print((a[j] & (1 << 2)) >> 2, BIN);
+              // SERIAL_MONITOR.println();
+
+              operators[3].power = (a[j] & (1 << 3)) >> 3;
+              // SERIAL_MONITOR.print((a[j] & (1 << 3)) >> 3, BIN);
+              // SERIAL_MONITOR.println();
+
+              operators[4].power = (a[j] & (1 << 4)) >> 4;
+              // SERIAL_MONITOR.print((a[j] & (1 << 4)) >> 4, BIN);
+              // SERIAL_MONITOR.println();
+
+              // SERIAL_MONITOR.print((a[j] & (1 << 5)) >> 5, BIN);
+              // SERIAL_MONITOR.println();
+              operators[5].power = (a[j] & (1 << 5)) >> 5;
+              break;
+            }
+          }
+
+
+          d = 0;
+          SERIAL_MONITOR.println("out of loop");
+        }
+        else {
+          if (incomingByte < 240) {
+            a[d] = incomingByte;
+            d += 1;
+          }
+
+          if (d == 169) {
+            i = -1;
+            d = 0;
+          }
+        }
+      }
+
+      if (i == 4) {
+        //SERIAL_MONITOR.println("bite 6");
+        if (incomingByte == 27) {
+          i = 5;
+        }
+        else {
+         i = -1;
+        }
+      }
+
+      if (i == 3) {
+        //SERIAL_MONITOR.println("bite 5");
+        if (incomingByte == 1) {
+          i = 4;
+        }
+        else {
+         i = -1;
+        }
+      }
+
+      if (i == 2) {
+        //SERIAL_MONITOR.println("bite 4");
+        if (incomingByte == 0) {
+          i = 3;
+        }
+        else {
+         i = -1;
+        }
+      }
+
+      if (i == 1) {
+        //SERIAL_MONITOR.println("bite 3");
+        if (incomingByte == 0) {
+          i = 2;
+        }
+        else {
+         i = -1;
+        }
+      }
+
+      if (i == 0) {
+        //SERIAL_MONITOR.println("bite 2");
+        if (incomingByte == 67) {
+          i = 1;
+        }
+        else {
+         i = -1;
+        }
+      }
+
+      if (incomingByte == 240) {
+        //SERIAL_MONITOR.println("bite 1");
+        i = 0;
+      }
+    }
+  }
+
   // Display selected parameter name and value instead of patch name
   void showParameterValue(char patch_subentity, char param_index) {
 

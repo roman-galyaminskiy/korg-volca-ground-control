@@ -45,14 +45,16 @@ public:
       static char knob_value = 0;
       static char non_empty_message_flg = 0;
 
+//      mapper.patch.receiveSysex();
+
       Usb.Task();
       if ( (size = Midi.RecvData(msg)) > 0 ) {
-        // SERIAL_MONITOR.print(msg[0], DEC);
-        // SERIAL_MONITOR.print(" ");
-        // SERIAL_MONITOR.print(msg[1], DEC);
-        // SERIAL_MONITOR.print(" ");
-        // SERIAL_MONITOR.print(msg[2], DEC);
-        // SERIAL_MONITOR.println();
+//         SERIAL_MONITOR.print(msg[0], DEC);
+//         SERIAL_MONITOR.print(" ");
+//         SERIAL_MONITOR.print(msg[1], DEC);
+//         SERIAL_MONITOR.print(" ");
+//         SERIAL_MONITOR.print(msg[2], DEC);
+//         SERIAL_MONITOR.println();
 
         // We pass "note on" and "note off" as they come, but "control change"
         // event from knobs require additional processing. If we pass them as they
@@ -93,14 +95,14 @@ public:
           // Keyboard
           else {
             velocity_message[2] = msg[2];
-            MIDI_SERIAL_PORT_1.write(velocity_message, size);
+//            MIDI_SERIAL_PORT_1.write(velocity_message, size);
 
-            // SERIAL_MONITOR.print(velocity_message[0], DEC);
-            // SERIAL_MONITOR.print(" ");
-            // SERIAL_MONITOR.print(velocity_message[1], DEC);
-            // SERIAL_MONITOR.print(" ");
-            // SERIAL_MONITOR.print(velocity_message[2], DEC);
-            // SERIAL_MONITOR.println();
+           SERIAL_MONITOR.print(msg[0], DEC);
+           SERIAL_MONITOR.print(" ");
+           SERIAL_MONITOR.print(msg[1], DEC);
+           SERIAL_MONITOR.print(" ");
+           SERIAL_MONITOR.print(msg[2], DEC);
+           SERIAL_MONITOR.println();
 
             MIDI_SERIAL_PORT_1.write(msg, size);
           }
