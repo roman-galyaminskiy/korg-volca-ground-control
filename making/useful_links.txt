@@ -1,0 +1,7 @@
+https://gcc.gnu.org/onlinedocs/gcc/Preprocessor-Options.html#Preprocessor-Options
+
+http://www.gnu.org/software/make/manual/make.html
+
+https://github.com/hexagon5un/AVR-Programming
+
+https://www.nongnu.org/avr-libc/user-manual/group__demo__project.html
