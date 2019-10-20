@@ -55,3 +55,81 @@ void Patch::sendSysexMessage() {
 
   /*patch_sent = 1;*/
 }
+
+//SysEx:
+void handle_sysex(byte* a, unsigned sizeofsysex){
+
+  Serial.println(sizeofsysex,DEC);
+ //Print Sysex on Serial0 on PC:
+ for(int n=0;n<sizeofsysex;n++){
+  Serial.print(a[n]);
+  Serial.print("  ");
+  }
+ Serial.print('\n');
+}
+
+void Patch::receiveSysex(byte* sysex_array, unsigned sysex_array_length) {
+  Serial.println("receiveSysex");
+  // SERIAL_MONITOR.println("receiveSysex");
+
+  char patch_name[DISPLAY_CODE_LENGTH];
+  char param_index = 0;
+  char op_index = 0;
+  char name_index = -1;
+
+  if (sysex_array_length == 263) {
+    // Parse SysEx omitting first 5 bytes of header
+    for (size_t sysex_index = 6; sysex_index < sysex_array_length - 1; sysex_index++) {
+
+      if (op_index >= 0 and op_index <= 5) {
+        // SERIAL_MONITOR.print(op_index, DEC);
+        // SERIAL_MONITOR.print(" ");
+        // SERIAL_MONITOR.print(param_index, DEC);
+        // SERIAL_MONITOR.println();
+        if (operators[op_index].parameters[param_index].max_value >= sysex_array[sysex_index]) {
+          operators[op_index].parameters[param_index].setValue(sysex_array[sysex_index]);
+        }
+        else {
+          operators[op_index].parameters[param_index].setValue(0);
+        }
+      }
+      else {
+        // SERIAL_MONITOR.print("all ");
+        // SERIAL_MONITOR.print(param_index, DEC);
+        // SERIAL_MONITOR.println();
+        if (all.parameters[param_index].max_value >= sysex_array[sysex_index]) {
+          all.parameters[param_index].setValue(sysex_array[sysex_index]);
+        }
+        else {
+          all.parameters[param_index].setValue(0);
+        }
+      }
+
+      if (op_index >= 0 and op_index <= 5 and param_index < 20) {
+        param_index++;
+      }
+      else if (op_index >= 0 and op_index < 5 and param_index == 20) {
+          op_index++;
+          param_index = 0;
+      }
+      else if (op_index >= 0 and op_index == 5 and param_index == 20) {
+          op_index = -1;
+          param_index = 0;
+      }
+      else if (op_index == -1 and param_index < 18) {
+          param_index++;
+      }
+      else if (op_index == -1 and param_index == 18) {
+          param_index++;
+          name_index = 0;
+          // SERIAL_MONITOR.println("Done");
+      }
+      else if (op_index == -1 and name_index > -1 and name_index <= 10) {
+          name_index++;
+          patch_name[name_index] = sysex_array[sysex_index];
+          // SERIAL_MONITOR.write(a[j]);
+          // SERIAL_MONITOR.println();
+      }
+    }
+  }
+}

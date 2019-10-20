@@ -11,8 +11,8 @@
 
 #define OPERATORS_NUMBER 6
 
-#include "Operator.hpp"
-#include "All.hpp"
+#define DISPLAY_CODE_LENGTH 10
+
 
 struct Patch {
   char patch_name[10];
@@ -24,6 +24,7 @@ struct Patch {
   void endSysex();
   void sendPatchData();
   void sendSysexMessage();
+  void receiveSysex(byte* sysex_array, unsigned sysex_array_length);
 };
 
 #endif
